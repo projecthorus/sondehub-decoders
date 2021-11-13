@@ -14,8 +14,8 @@ Progress:
     * GPS Raw - TODO
     * XDATA - TODO
       * XDATA Telemetry Decoding - TODO
-    * RS41-SGM Telemetry Block - TODO
-    * Empty Block - TODO
+    * RS41-SGM Telemetry Block - DONE
+    * Empty Block - DONE
     * Raw Measurement - DONE
   * SubFrame collation and decoding - PARTIAL
   * PTU Calculations
@@ -43,6 +43,7 @@ This python lib is structured as follows:
   * RS41 - RS41 frame decoder module.
     * decoder - RS41 frame decoder function: decoder(frame)
     * postprocess - Post-processing functions (GNSS position, sensor data)
+    * subframe - Subframe collation and parameter extraction
   * utils - Checksum, data type, and GNSS coordinate conversion utilities, common to multiple radiosonde types
 
 For all radiosonde types, there is a decode function (e.g. sondehubdecoders.RS41.decoder.decode()), which accepts a frame of telemetry data as bytes, and returns a dictionary. The contents of the returned dictionary will be different for each radiosonde type, but for all sonde types there will be a 'common' entry containing the basic information [required by SondeHub](https://github.com/projecthorus/sondehub-infra/wiki/SondeHub-Telemetry-Format).
