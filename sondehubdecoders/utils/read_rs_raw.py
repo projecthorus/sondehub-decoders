@@ -45,6 +45,7 @@ if __name__ == "__main__":
     import sys
     from ..RS41.decoder import decode as rs41_decode
     from ..RS41.decoder import to_autorx_log as rs41_log
+    from ..RS41 import RS41
 
     # Command line arguments.
     parser = argparse.ArgumentParser()
@@ -86,9 +87,12 @@ if __name__ == "__main__":
     #print(frames)
     #pprint.pprint(decode(_hex))
 
+    _rs41 = RS41()
+
     for _raw_frame in frames:
         try:
-            _frame = decode_func(_raw_frame)
+            _frame = _rs41.add_frame(_raw_frame)
+            #_frame = decode_func(_raw_frame)
 
 
             if args.csv:
@@ -96,6 +100,9 @@ if __name__ == "__main__":
             else:
                 pprint.pprint(_frame)
 
-        except:
+
+
+        except Exception as e:
+            logging.exception("Issue generating frame", exc_info=e)
             continue
 

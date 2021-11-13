@@ -108,7 +108,7 @@ RS41_BLOCK_DECODERS = {
             "pressure_ref2": uint24_le,
             "pressure_temp": lambda t_in: t_in / 100.0,
         },
-        "block_post_process": None,
+        "block_post_process": rs41_process_measurements,
     },
     RS41_BLOCK_GPSPOS: {
         "block_name": "GPS Position",
@@ -138,7 +138,7 @@ RS41_BLOCK_DECODERS = {
         "fields": [
             'week',
             'iTOW',
-            'sv_info'
+            'sv_quality'
             ],
         "field_decoders": {
             "iTOW": lambda iTOW: iTOW/1000.0  # ms -> s
@@ -357,7 +357,7 @@ def to_autorx_log(frame):
     _line = ""
 
     # Timestamp
-    _line += f"{frame['blocks']['GPS Fix Information']['timestamp']},"
+    _line += f"{frame['blocks']['GPS Fix Information']['timestamp_str']},"
 
     # Serial
     _line += frame['blocks']['Status']['serial'] + ","
@@ -384,7 +384,12 @@ def to_autorx_log(frame):
     _line += f"{frame['blocks']['GPS Position']['heading']:0.1f},"
 
     # Temp, Humidity, Pressure
-    _line += "temp,humidity,pressure,"
+    if 'temperature' in frame['blocks']['Measurements']:
+        _line += f"{frame['blocks']['Measurements']['temperature']:.1f},"
+    else:
+        _line += "-273.0,"
+    
+    _line += "humidity,pressure,"
 
     # The rest TODO...
 
