@@ -29,6 +29,7 @@ RS41_BLOCK_GPSINFO = 0x7C
 RS41_BLOCK_GPSRAW = 0x7D
 RS41_BLOCK_GPSPOS = 0x7B
 RS41_BLOCK_XDATA = 0x7E
+RS41_BLOCK_SGM_xTU = 0x7F
 RS41_BLOCK_EMPTY = 0x76
 RS41_BLOCK_ENCRYPTED = 0x80
 
@@ -130,6 +131,73 @@ RS41_BLOCK_DECODERS = {
         },
         "block_post_process": rs41_process_gps_position,
     },
+    RS41_BLOCK_GPSINFO: {
+        "block_name": "GPS Fix Information",
+        "expected_len": 30,
+        "struct": "<HI24s",
+        "fields": [
+            'week',
+            'iTOW',
+            'sv_info'
+            ],
+        "field_decoders": {
+            "iTOW": lambda iTOW: iTOW/1000.0  # ms -> s
+        },
+        "block_post_process": rs41_process_gps_info,
+    },
+    RS41_BLOCK_GPSRAW: {
+        # TODO - Extract raw Pseudorange and Doppler Data
+        "block_name": "GPS Raw",
+        "expected_len": -1,
+        "struct": "",
+        "fields": [
+            ],
+        "field_decoders": {
+        },
+        "block_post_process": None,
+    },
+    RS41_BLOCK_XDATA: {
+        "block_name": "XDATA",
+        "expected_len": -1,
+        "struct": "",
+        "fields": [
+            ],
+        "field_decoders": {
+        },
+        "block_post_process": None,
+    },
+    RS41_BLOCK_ENCRYPTED: {
+        "block_name": "Encrypted Data",
+        "expected_len": -1,
+        "struct": "",
+        "fields": [
+            ],
+        "field_decoders": {
+        },
+        "block_post_process": None,
+    },
+    RS41_BLOCK_SGM_xTU: {
+        # TODO - Need sample of SGM raw data
+        "block_name": "SGM Telemetry",
+        "expected_len": -1,
+        "struct": "",
+        "fields": [
+            ],
+        "field_decoders": {
+        },
+        "block_post_process": None,
+    },
+    RS41_BLOCK_EMPTY: {
+        "block_name": "Empty Block",
+        "expected_len": -1,
+        "struct": "",
+        "fields": [
+            ],
+        "field_decoders": {
+        },
+        "block_post_process": None,
+    },
+
 }
 
 
@@ -189,7 +257,25 @@ def decode(frame, ignore_crc=False, subframe=None):
 
             if _crc_ok:
                 if _block_type in RS41_BLOCK_DECODERS:
-                    if _block_len == RS41_BLOCK_DECODERS[_block_type]["expected_len"]:
+                    if RS41_BLOCK_DECODERS[_block_type]["expected_len"] == -1:
+                        # Variable Length block!
+                        _block_dict = {'raw': _block_data}
+
+                        if RS41_BLOCK_DECODERS[_block_type]["block_post_process"]:
+                            output["blocks"][
+                                RS41_BLOCK_DECODERS[_block_type]["block_name"]
+                            ] = RS41_BLOCK_DECODERS[_block_type]["block_post_process"](
+                                _block_dict, subframe=subframe
+                            )
+                        else:
+                            # Add the resultant block data to our output dictionary as-is
+                            output["blocks"][
+                                RS41_BLOCK_DECODERS[_block_type]["block_name"]
+                            ] = _block_dict
+
+                    elif _block_len == RS41_BLOCK_DECODERS[_block_type]["expected_len"]:
+                        # Fixed length block.
+
                         # Decode fields
                         _block_field_data = struct.unpack(
                             RS41_BLOCK_DECODERS[_block_type]["struct"], _block_data
@@ -271,7 +357,7 @@ def to_autorx_log(frame):
     _line = ""
 
     # Timestamp
-    _line += "timestamp,"
+    _line += f"{frame['blocks']['GPS Fix Information']['timestamp']},"
 
     # Serial
     _line += frame['blocks']['Status']['serial'] + ","

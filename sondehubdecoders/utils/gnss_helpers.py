@@ -1,6 +1,7 @@
 #
 #   Position Coordinate Conversions
 #
+import datetime
 from math import atan2, sqrt, sin, cos, pi, degrees
 
 
@@ -65,6 +66,13 @@ def ecef_velocity(lat, lon, ecef_vel_x, ecef_vel_y, ecef_vel_z):
 
     return (ground_speed, ascent_rate, wind_u, wind_v, heading)
 
+
+def gps_weeksecondstoutc(gpsweek, gpsseconds, leapseconds=0):
+    """ Convert time in GPS time (GPS Week, seconds-of-week) to a UTC timestamp """
+    epoch = datetime.datetime.strptime("1980-01-06 00:00:00","%Y-%m-%d %H:%M:%S")
+    elapsed = datetime.timedelta(days=(gpsweek*7),seconds=(gpsseconds))
+    timestamp = epoch + elapsed - datetime.timedelta(seconds=leapseconds)
+    return timestamp
 
 
 if __name__ == "__main__":

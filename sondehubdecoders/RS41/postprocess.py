@@ -11,7 +11,7 @@ import logging
 import struct
 from ..utils.checksums import check_packet_crc
 from ..utils.data_types import *
-from ..utils.gnss_helpers import ecef_to_wgs84, ecef_velocity
+from ..utils.gnss_helpers import ecef_to_wgs84, ecef_velocity, gps_weeksecondstoutc
 
 
 def rs41_process_gps_position(block, **args):
@@ -45,5 +45,19 @@ def rs41_process_gps_position(block, **args):
     output['wind_u'] = wind_u
     output['wind_v'] = wind_v
     output['heading'] = heading
+
+    return output
+
+def rs41_process_gps_info(block, **args):
+    """ 
+    Post-Process the GPS Information block from a RS41 Frame
+    """
+
+    output = block.copy()
+
+    _timestamp = gps_weeksecondstoutc(output['week'], output['iTOW'])
+
+    output['timestamp_dt'] = _timestamp
+    output['timestamp_str'] = _timestamp.isoformat()
 
     return output
