@@ -3,6 +3,7 @@
 #   RS41 Decoder Library
 #
 import logging
+import time
 import traceback
 from .decoder import decode
 from .subframe import *
@@ -27,6 +28,9 @@ class RS41(object):
         self.subframe = None
         self.max_subframe = None
 
+        # Last frame arrival time, which allows us to close out this object after some timeout.
+        self.last_frame_time = time.time()
+
         self.archive_postprocess_callback = archive_postprocess_callback
 
     
@@ -36,12 +40,16 @@ class RS41(object):
         try:
             _frame = decode(raw, subframe=self.subframe)
 
+            self.last_frame_time = time.time()
+
             if self.serial is None:
                 self.serial = _frame['blocks']['Status']['serial']
             else:
                 if _frame['blocks']['Status']['serial'] != self.serial:
                     # Serial mismatch!
                     raise ValueError(f"Telemetry is from a different radiosonde! ({_frame['blocks']['Status']['serial']}, should be {self.serial}.")
+
+            # If measurements could not be calculated, add the frame to self.raw_frames for later re-processing
 
             # Create a new subframe object if none exists yet
             if self.subframe is None:
@@ -50,6 +58,11 @@ class RS41(object):
             # Add the current subframe data
             self.subframe.add_segment(_frame['blocks']['Status']['subframe_count'], _frame['blocks']['Status']['subframe_data'])
 
+            _frame['subframe'] = self.subframe.subframe_fields
+
+            if self.subframe.subframe_complete():
+                # TODO - Reprocess anything in self.raw_frames and send to a callback.
+                pass
 
             return _frame
             

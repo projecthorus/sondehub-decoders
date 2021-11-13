@@ -147,7 +147,7 @@ class RS41Subframe(object):
 
 
 
-            logging.debug(f"Subframe Field: {str(self.subframe_fields)}")
+            logging.debug(f"Subframe Fields: {str(self.subframe_fields)}")
 
 
 
@@ -162,3 +162,13 @@ class RS41Subframe(object):
 
     def pressure_cal_available(self):
         return False
+
+    def subframe_complete(self):
+        """
+        Indicate whether we have a complete set of subframe data.
+        This is used to trigger re-processing of old telemetry data.
+        """
+        if len(list(self.subframe_raw_dict.keys())) == self.subframe_length:
+            return True
+        else:
+            return False

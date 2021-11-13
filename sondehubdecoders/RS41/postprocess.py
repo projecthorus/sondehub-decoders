@@ -106,12 +106,11 @@ def rs41_process_measurements(block, subframe = None):
 
     # No subframe data available, bomb out now.
     if subframe is None:
-        output['measurements_valid'] = False
         return output
     
     if subframe.temperature_cal_available():
-        #logging.debug(str(subframe.subframe_fields))
         # Temperature calibration data available!
+        # Extract the bits we need
         _rf1 = subframe.subframe_fields['rf1']
         _rf2 = subframe.subframe_fields['rf2']
         _co = subframe.subframe_fields['tempmeas_co1']

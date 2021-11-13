@@ -177,15 +177,35 @@ RS41_BLOCK_DECODERS = {
         "block_post_process": None,
     },
     RS41_BLOCK_SGM_xTU: {
-        # TODO - Need sample of SGM raw data
-        "block_name": "SGM Telemetry",
-        "expected_len": -1,
-        "struct": "",
+        # RS41-SGM Measurements blocks are similar to regular RS41-SGP blocks, just without
+        # any pressure information.
+        "block_name": "Measurements",
+        # Note - As struct does not have a type for 24-bit uints, we use a helper function to decode these fields.
+        "expected_len": 27,
+        "struct": "<3s3s3s3s3s3s3s3s3s",
         "fields": [
-            ],
+            "temp_meas_main",
+            "temp_meas_ref1",
+            "temp_meas_ref2",
+            "humidity_main",
+            "humidity_ref1",
+            "humidity_ref2",
+            "humidity_temp_main",
+            "humidity_temp_ref1",
+            "humidity_temp_ref2",
+        ],
         "field_decoders": {
+            "temp_meas_main": uint24_le,
+            "temp_meas_ref1": uint24_le,
+            "temp_meas_ref2": uint24_le,
+            "humidity_main": uint24_le,
+            "humidity_ref1": uint24_le,
+            "humidity_ref2": uint24_le,
+            "humidity_temp_main": uint24_le,
+            "humidity_temp_ref1": uint24_le,
+            "humidity_temp_ref2": uint24_le,
         },
-        "block_post_process": None,
+        "block_post_process": rs41_process_measurements,
     },
     RS41_BLOCK_EMPTY: {
         "block_name": "Empty Block",
@@ -208,13 +228,7 @@ def decode(frame, ignore_crc=False, subframe=None):
     Args:
     frame (bytes): Data frame provided as bytes
     ignore_crc (bool): If set, ignore any CRC failures
-    subframe (dict): Optional subframe dataset, structured as {1: bytes, 2: bytes, etc...}
-
-    Returns a dictionary, structured as follows:
-
-
-
-    By default this function only returns information 
+    subframe (dict): Optional subframe Object, for use in processing measurement data.
 
     """
 
@@ -250,10 +264,6 @@ def decode(frame, ignore_crc=False, subframe=None):
             _block_data = frame[_idx + 2 : _idx + 2 + _block_len]
 
             _crc_ok = check_packet_crc(frame[_idx + 2 : _idx + 2 + _block_len + 2])
-
-            logging.debug(
-                f"Block Type: {hex(_block_type)}, Len: {_block_len}, CRC OK: {_crc_ok}"
-            )
 
             if _crc_ok:
                 if _block_type in RS41_BLOCK_DECODERS:
@@ -336,6 +346,37 @@ def decode(frame, ignore_crc=False, subframe=None):
         except Exception as e:
             logging.error(f"Error extracting block. (Index: {_idx}): {str(e)}")
             break
+
+    # Pull out the commonly required telemetry fields, for use in SondeHub
+    output['common'] = {
+        'type': 'RS41'
+    }
+    if 'Status' in output['blocks']:
+        output['common']['serial']  = output['blocks']['Status']['serial']
+        output['common']['frame']   = output['blocks']['Status']['frame_count']
+        output['common']['batt']   = output['blocks']['Status']['battery']
+
+    if "GPS Fix Information" in output['blocks']:
+        output['common']['datetime'] = output['blocks']["GPS Fix Information"]['timestamp_str']
+
+    if "GPS Position" in output['blocks']:
+        output['common']['sats'] = output['blocks']["GPS Position"]['numSV']
+        output['common']['lat'] = output['blocks']["GPS Position"]['latitude']
+        output['common']['lon'] = output['blocks']["GPS Position"]['longitude']
+        output['common']['alt'] = output['blocks']["GPS Position"]['altitude']
+        output['common']['vel_v'] = output['blocks']["GPS Position"]['ascent_rate']
+        output['common']['vel_h'] = output['blocks']["GPS Position"]['ground_speed']
+        output['common']['heading'] = output['blocks']["GPS Position"]['heading']
+
+    if subframe:
+        if 'subtype' in subframe.subframe_fields:
+            output['common']['subtype'] = subframe.subframe_fields['subtype']
+        
+        if 'burstkill_timer' in subframe.subframe_fields:
+            output['common']['burst_timer'] = subframe.subframe_fields['burstkill_timer']
+
+        if 'tx_frequency' in subframe.subframe_fields:
+            output['common']['tx_frequency'] = subframe.subframe_fields['tx_frequency']/1000.0
 
     return output
 

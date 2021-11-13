@@ -10,7 +10,6 @@ def read_raw_rs41(filename):
     """
     Attempt to read a file containing lines of hexadecimal data, suffixed with CRC information (e.g. [OK] or [NO])
     
-
     Returns a list of bytes.
     """
 
@@ -35,10 +34,6 @@ def read_raw_rs41(filename):
 
 
 
-
-
-
-
 if __name__ == "__main__":
     import argparse
     import pprint
@@ -53,7 +48,7 @@ if __name__ == "__main__":
         "filename", help="Filename to Open",
     )
     parser.add_argument(
-        "-t", "--type", help="Radiosonde type (RS41, ...)", default="RS41"
+        "-t", "--type", help="Radiosonde type (RS41, DFM, etc...)", default="RS41"
     )
     parser.add_argument(
         "-v", "--verbose", help="Enable debug output.", action="store_true"
@@ -77,6 +72,7 @@ if __name__ == "__main__":
     if args.type == "RS41":
         decode_func = rs41_decode
         log_func = rs41_log
+    # Other types here
     else:
         logging.critical("Unknown Radiosonde Type!")
         sys.exit(1)
@@ -94,15 +90,12 @@ if __name__ == "__main__":
             _frame = _rs41.add_frame(_raw_frame)
             #_frame = decode_func(_raw_frame)
 
-
             if args.csv:
                 print(log_func(_frame))
             else:
                 pprint.pprint(_frame)
 
-
-
         except Exception as e:
-            logging.exception("Issue generating frame", exc_info=e)
+            logging.exception("Issue parsing frame", exc_info=e)
             continue
 

@@ -10,16 +10,20 @@ Progress:
   * Blocks: 
     * Status Block - DONE
     * GPS Position - DONE
-    * GPS Info - TODO
+    * GPS Info - DONE
     * GPS Raw - TODO
     * XDATA - TODO
+      * XDATA Telemetry Decoding - TODO
     * RS41-SGM Telemetry Block - TODO
     * Empty Block - TODO
     * Raw Measurement - DONE
-  * SubFrame collation and decoding - TODO
-  * PTU Calculations - TODO
-    * Comparison against RS decoder.
-  * Stateful Frame Decoder - TODO
+  * SubFrame collation and decoding - PARTIAL
+  * PTU Calculations
+    * Temperature - Matches RS Decoder
+    * Humidity - TODO
+    * Pressure - TODO
+    * Comparison against RS decoder - TODO
+  * Stateful Frame Decoder - PARTIAL
 * IMET-1/4
 * IMET-54
 * Graw DFM
@@ -43,7 +47,7 @@ This python lib is structured as follows:
 
 For all radiosonde types, there is a decode function (e.g. sondehubdecoders.RS41.decoder.decode()), which accepts a frame of telemetry data as bytes, and returns a dictionary. The contents of the returned dictionary will be different for each radiosonde type, but for all sonde types there will be a 'common' entry containing the basic information [required by SondeHub](https://github.com/projecthorus/sondehub-infra/wiki/SondeHub-Telemetry-Format).
 
-## Example Usage
+## Example Usage (Single Frames)
 Each decoder module has a helper main function allowing input of a telemetry frame as hex on the command line, e.g:
 
 ```
@@ -55,6 +59,16 @@ $ python -m sondehubdecoders.RS41.decoder 8635f44093df1a60cc726b2da8bfd2e25a3c0c
 ```
 
 Each decoder module has a class (e.g. RS41) which allows ingestion of multiple frames of data, maintaining the latest state of the radiosonde.
+
+## Example Usage (Multiple Frames)
+If you have a file of raw data output from the RS decoders (e.g. what auto_rx can be [configured to save](https://github.com/projecthorus/radiosonde_auto_rx/blob/master/auto_rx/station.cfg.example#L408)), then these can be processed as follows:
+```
+$ python -m sondehubdecoders.utils.read_rs_raw example_data/S4610487_raw.hex | less
+
+(lots of output here)
+
+```
+Adding the `-c` option results in a CSV output, with the same field ordering as auto_rx's log files.
 
 ## Test Frames
 
@@ -74,3 +88,5 @@ python -m sondehubdecoders.RS41.decoder   8635f44093df1a6005a0740a9f07945e94bcc7
 The following resources were a huge help in writing this library
 * https://github.com/bazjo/RS41_Decoding
 * https://github.com/rs1729/RS/
+
+
