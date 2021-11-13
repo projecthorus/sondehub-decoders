@@ -1,39 +1,8 @@
 #
 #   Position Coordinate Conversions
 #
-from math import atan2, sqrt, sin, cos, pi
+from math import atan2, sqrt, sin, cos, pi, degrees
 
-# from rs41mod.c
-#
-# // WGS84/GRS80 Ellipsoid
-# #define EARTH_a  6378137.0
-# #define EARTH_b  6356752.31424518
-# #define EARTH_a2_b2  (EARTH_a*EARTH_a - EARTH_b*EARTH_b)
-
-# const
-# double a = EARTH_a,
-#        b = EARTH_b,
-#        a_b = EARTH_a2_b2,
-#        e2  = EARTH_a2_b2 / (EARTH_a*EARTH_a),
-#        ee2 = EARTH_a2_b2 / (EARTH_b*EARTH_b);
-
-# static void ecef2elli(double X[], double *lat, double *lon, double *alt) {
-#     double phi, lam, R, p, t;
-
-#     lam = atan2( X[1] , X[0] );
-
-#     p = sqrt( X[0]*X[0] + X[1]*X[1] );
-#     t = atan2( X[2]*a , p*b );
-
-#     phi = atan2( X[2] + ee2 * b * sin(t)*sin(t)*sin(t) ,
-#                  p - e2 * a * cos(t)*cos(t)*cos(t) );
-
-#     R = a / sqrt( 1 - e2*sin(phi)*sin(phi) );
-#     *alt = p / cos(phi) - R;
-
-#     *lat = phi*180/M_PI;
-#     *lon = lam*180/M_PI;
-# }
 
 # WGS84 constants
 WGS84_EARTH_a = 6378137.0
@@ -44,7 +13,7 @@ WGS84_EARTH_ee2 = WGS84_EARTH_a2_b2 / (WGS84_EARTH_b * WGS84_EARTH_b)
 
 def ecef_to_wgs84(ecef_x_m, ecef_y_m, ecef_z_m):
     """ 
-    Convert ECEF coordinates to lat/lon/alt in a WGS84 datum 
+    Convert ECEF coordinates (m) to lat/lon/alt in a WGS84 datum 
     Ported from ecef2elli from rs41mod.c
     """
 
@@ -67,42 +36,54 @@ def ecef_to_wgs84(ecef_x_m, ecef_y_m, ecef_z_m):
     return (lat, lon, alt)
 
 
-def ecef_velocity(lat, lon, ecef_v_x, ecef_v_y, ecef_v_z):
+def ecef_velocity(lat, lon, ecef_vel_x, ecef_vel_y, ecef_vel_z):
     """
-    Convert ECEF Velocities to Horizontal / Vertical speeds, and direction of travel.
+    Convert ECEF Velocities (m/s) to Horizontal / Vertical speeds, and direction of travel.
     Requires lat/lon (processed using ecef_to_wgs84) as an input.
     """
 
-    
+    phi = lat * pi/180.0
+    lam = lon * pi/180.0
 
-    return (vel_h, vel_v, heading)
+    # Calculate out N/S, E/W, U/D speed vectors
+    vN = -1.0*ecef_vel_x*sin(phi)*cos(lam)  - ecef_vel_y*sin(phi)*sin(lam) + ecef_vel_z*cos(phi)
+    vE = -1.0*ecef_vel_x*sin(lam)           + ecef_vel_y*cos(lam)
+    vU = ecef_vel_x*cos(phi)*cos(lam)       + ecef_vel_y*cos(phi)*sin(lam) + ecef_vel_z*sin(phi)
 
-    # // ECEF-Velocities
-    # // ECEF-Vel -> NorthEastUp
-    # phi = lat*M_PI/180.0;
-    # lam = lon*M_PI/180.0;
-    # vN = -V[0]*sin(phi)*cos(lam) - V[1]*sin(phi)*sin(lam) + V[2]*cos(phi);
-    # vE = -V[0]*sin(lam) + V[1]*cos(lam);
-    # vU =  V[0]*cos(phi)*cos(lam) + V[1]*cos(phi)*sin(lam) + V[2]*sin(phi);
+    # Ground speed and Ascent Rate
+    ground_speed = sqrt(vN*vN + vE*vE)
+    ascent_rate = vU
 
-    # // NEU -> HorDirVer
-    # gpx->vH = sqrt(vN*vN+vE*vE);   // HORIZONTAL SPEED
+    # Traditional U/V wind vector components
+    wind_u = vE
+    wind_v = vN
 
-    # dir = atan2(vE, vN) * 180 / M_PI;
-    # if (dir < 0) dir += 360;
-    # gpx->vD = dir;  // HEADING
+    # Heading of travel
+    heading = degrees(atan2(vE, vN))
+    if heading < 0:
+        heading += 360.0
 
-    # gpx->vV = vU; // ASCENT RATE
+    return (ground_speed, ascent_rate, wind_u, wind_v, heading)
 
 
 
 if __name__ == "__main__":
 
+    LATLON_TOLERANCE = 0.000005
+    ALT_TOLERANCE = 0.1
+
     tests = [
-        [2792680.28, 1357809.67, 5552663.50]
+        [-3920900.06, 3466390.67, -3633506.63, -34.95202, 138.52073, 3.0]
     ]
 
     for test in tests:
         (lat, lon, alt) = ecef_to_wgs84(test[0], test[1], test[2])
 
-        print(f"In: ({test[0]}, {test[1]}, {test[2]})  Out: ({lat}, {lon}, {alt})")
+        _test_results = f"In: ({test[0]}, {test[1]}, {test[2]})  Out: ({lat}, {lon}, {alt}), Expected: ({test[3]}, {test[4]}, {test[5]})  - "
+
+        if (abs(lat - test[3]) < LATLON_TOLERANCE) and ((abs(lon - test[4]) < LATLON_TOLERANCE)) and (abs(alt-test[5]) < ALT_TOLERANCE):
+            _test_results += "PASS"
+        else:
+            _test_results += "FAIL"
+        
+        print(_test_results)

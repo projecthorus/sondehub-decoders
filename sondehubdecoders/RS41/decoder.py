@@ -15,6 +15,9 @@ from .postprocess import *
 # Frame Header - common to all frames.
 RS41_FRAME_HEADER = b"\x86\x35\xf4\x40\x93\xdf\x1a\x60"
 
+# RS41 XOR Scrambling Sequence. Not currently using this
+RS41_XOR_SCRAMBLE = b'\x96\x83>Q\xb1I\x08\x982\x05Y\x0e\xf9D\xc6&!`\xc2\xeay]m\xa1TiG\x0c\xdc\xe8\\\xf1\xf7v\x82\x7f\x07\x99\xa2,\x93|0c\xf5\x10.a\xd0\xbc\xb4\xb6\x06\xaa\xf4#xn;\xae\xbf{L\xc1'
+
 # Frame Types
 RS41_FRAME_TYPE_REGULAR = 0x0F
 RS41_FRAME_TYPE_EXTENDED = 0xF0
@@ -107,7 +110,7 @@ RS41_BLOCK_DECODERS = {
         "block_post_process": None,
     },
     RS41_BLOCK_GPSPOS: {
-        "block_name": "GNSS Position",
+        "block_name": "GPS Position",
         "expected_len": 21,
         "struct": "<iiihhhBBB",
         "fields": [
@@ -132,7 +135,7 @@ RS41_BLOCK_DECODERS = {
 
 def decode(frame, ignore_crc=False, subframe=None):
     """
-    Attempt to decode a RS41 frame, provided as bytes.
+    Attempt to decode a RS41 frame, provided as bytes, after de-scrambling has been performed.
 
     Args:
     frame (bytes): Data frame provided as bytes
@@ -249,6 +252,59 @@ def decode(frame, ignore_crc=False, subframe=None):
             break
 
     return output
+
+
+def descramble(frame):
+    """
+    De-Scramble a RS41 data frame by bitwise-XORing it with the known XOR scramble mask
+    """
+    # TODO
+    return frame
+
+
+def to_autorx_log(frame):
+    """
+    Convert a frame dictionary into a line matching the auto_rx log format.
+    """
+    # timestamp,serial,frame,lat,lon,alt,vel_v,vel_h,heading,temp,humidity,pressure,type,freq_mhz,snr,f_error_hz,sats,batt_v,burst_timer,aux_data
+    # 2021-11-12T22:53:38.000Z,S4610487,313,-34.95245,138.52045,10.5,-0.3,0.3,180.9,-273.0,-1.0,-1.0,RS41,401.500,13.5,937,6,2.9,-1,-1
+    _line = ""
+
+    # Timestamp
+    _line += "timestamp,"
+
+    # Serial
+    _line += frame['blocks']['Status']['serial'] + ","
+
+    # Frame Number
+    _line += f"{frame['blocks']['Status']['frame_count']},"
+
+    # Latitude
+    _line += f"{frame['blocks']['GPS Position']['latitude']:0.5f},"
+
+    # Longitude
+    _line += f"{frame['blocks']['GPS Position']['longitude']:0.5f},"
+
+    # Altitude
+    _line += f"{frame['blocks']['GPS Position']['altitude']:0.1f},"
+
+    # Ascent Rate
+    _line += f"{frame['blocks']['GPS Position']['ascent_rate']:0.1f},"
+
+    # Ground Speed
+    _line += f"{frame['blocks']['GPS Position']['ground_speed']:0.1f},"
+
+    # Heading
+    _line += f"{frame['blocks']['GPS Position']['heading']:0.1f},"
+
+    # Temp, Humidity, Pressure
+    _line += "temp,humidity,pressure,"
+
+    # The rest TODO...
+
+
+    return _line
+
 
 
 if __name__ == "__main__":
