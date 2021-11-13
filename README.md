@@ -48,6 +48,14 @@ This python lib is structured as follows:
 
 For all radiosonde types, there is a decode function (e.g. sondehubdecoders.RS41.decoder.decode()), which accepts a frame of telemetry data as bytes, and returns a dictionary. The contents of the returned dictionary will be different for each radiosonde type, but for all sonde types there will be a 'common' entry containing the basic information [required by SondeHub](https://github.com/projecthorus/sondehub-infra/wiki/SondeHub-Telemetry-Format).
 
+## Dependencies
+Either:
+* sudo apt-get install python3-crcmod
+
+or
+
+* pip install crcmod
+
 ## Example Usage (Single Frames)
 Each decoder module has a helper main function allowing input of a telemetry frame as hex on the command line, e.g:
 
@@ -66,7 +74,133 @@ If you have a file of raw data output from the RS decoders (e.g. what auto_rx ca
 ```
 $ python -m sondehubdecoders.utils.read_rs_raw example_data/S4610487_raw.hex | less
 
-(lots of output here)
+{'blocks': {'Empty Block': {'raw': b'\x00\x00\x00\x00\x00\x00\x00\x00'
+                                   b'\x00\x00\x00\x00\x00\x00\x00\x00\x00'},
+            'GPS Fix Information': {'iTOW': 522693.001,
+                                    'sv_quality': {2: 245,
+                                                   6: 248,
+                                                   11: 243,
+                                                   12: 249,
+                                                   14: 140,
+                                                   15: 146,
+                                                   17: 144,
+                                                   19: 216,
+                                                   24: 246,
+                                                   28: 142,
+                                                   29: 144,
+                                                   32: 140},
+                                    'timestamp_dt': datetime.datetime(2021, 11, 13, 1, 11, 33, 1000),
+                                    'timestamp_str': '2021-11-13T01:11:33.001000',
+                                    'week': 2183},
+            'GPS Position': {'altitude': 697.6707692649215,
+                             'ascent_rate': -9.277708048092673,
+                             'ecef_pos_x_cm': -395746741,
+                             'ecef_pos_y_cm': 342992404,
+                             'ecef_pos_z_cm': -362971385,
+                             'ecef_vel_x_cms': -247,
+                             'ecef_vel_y_cms': -948,
+                             'ecef_vel_z_cms': 999,
+                             'ground_speed': 10.473563547062504,
+                             'heading': 56.97657316759443,
+                             'latitude': -34.90594509757247,
+                             'longitude': 139.08463332510456,
+                             'numSV': 8,
+                             'pDOP': 1.6,
+                             'sAcc': 40.0,
+                             'wind_u': 8.781536401823903,
+                             'wind_v': 5.707902574308551},
+            'GPS Raw': {'raw': b'\xfa,=\x01\xff#\x97A\x06[b\xff\xa7{\\\x1a'
+                               b'*\xef\x00\x04 \xe5\x049\x99\xff}\x9fv\x15V8'
+                               b'\x01\xd3Z|\x11\x04\x07\x012wv\x0c\xb6\x07\x01c'
+                               b'\x00\x00\x00\x0c4\x00\x9d\xa8\xf1\x1d\xea\t'
+                               b'\x00\xb3\xa6p\x03&Q\x00\xbe\x1c5\t'
+                               b'\x19\xb4\xff\xe9\xe3i\x1dj\xfe\x00\x8f\xe0'
+                               b'\x85\x1c\x92]\xff'},
+            'Measurements': {'humidity_main': 554184,
+                             'humidity_ref1': 480272,
+                             'humidity_ref2': 547976,
+                             'humidity_temp_main': 175980,
+                             'humidity_temp_ref1': 133630,
+                             'humidity_temp_ref2': 193901,
+                             'pressure_main': 0,
+                             'pressure_ref1': 0,
+                             'pressure_temp': 0.0,
+                             'temp_meas_main': 180259,
+                             'temp_meas_ref1': 133629,
+                             'temp_meas_ref2': 193902,
+                             'temperature': 7.269102149977816,
+                             'unknown': 0,
+                             'unknown2': 0},
+            'Status': {'battery': 2.7,
+                       'bitfield1': 3,
+                       'bitfield2': 0,
+                       'frame_count': 8583,
+                       'humidity_sensor_heating_pwm': 140,
+                       'max_subframe': 50,
+                       'ref_area_temp': 22,
+                       'serial': 'S4610487',
+                       'subframe_count': 14,
+                       'subframe_data': b'C\xf4\x0ci\xc3\x00\x00\x00'
+                                        b'\x00\x00\x00\x00\x00\x00\x00\x00',
+                       'tx_power': 7,
+                       'unknown1': 0,
+                       'unknown2': 0}},
+ 'common': {'alt': 697.6707692649215,
+            'batt': 2.7,
+            'burst_timer': 30600,
+            'datetime': '2021-11-13T01:11:33.001000',
+            'frame': 8583,
+            'heading': 56.97657316759443,
+            'lat': -34.90594509757247,
+            'lon': 139.08463332510456,
+            'sats': 8,
+            'serial': 'S4610487',
+            'subtype': 'RS41-SG',
+            'type': 'RS41',
+            'vel_h': 10.473563547062504,
+            'vel_v': -9.277708048092673},
+ 'ecc_data': b'!p\xb1\xd8X\xcd\x83e;\x0c\xd0mIj\x9d.}\xb2\x93k\to\xc1\x9d'
+             b'\x05\xc7\xb9uS\xd3\xadCb\xc4\x80\xd0\xe0\xf3\x95G'
+             b'\xae\xa8\xc4\x9b;G\xf9\x14',
+ 'frame_type': 'Regular',
+ 'subframe': {'burstkill_status': 1,
+              'burstkill_timer': 30600,
+              'firmware_version': 20215,
+              'freq_lower': 128,
+              'freq_upper': 37,
+              'humimeas_calT1': [1.2928862571716309,
+                                 -0.03315814957022667,
+                                 0.0050709364004433155],
+              'humimeas_calT1_0': 1.2928862571716309,
+              'humimeas_calT1_1': -0.03315814957022667,
+              'humimeas_calT1_2': 0.0050709364004433155,
+              'humimeas_co2': [-243.91079711914062,
+                               0.18765400350093842,
+                               8.199999683711212e-06],
+              'humimeas_co2_0': -243.91079711914062,
+              'humimeas_co2_1': 0.18765400350093842,
+              'humimeas_co2_2': 8.199999683711212e-06,
+              'mainboard_serial': 'S4431040\x000',
+              'mainboard_type': 'RSM412',
+              'pressure_serial': '00000000',
+              'rf1': 750.0,
+              'rf2': 1100.0,
+              'subtype': 'RS41-SG',
+              'tempmeas_calT1': [1.2429190874099731,
+                                 -0.16472387313842773,
+                                 0.008384902961552143],
+              'tempmeas_calT1_0': 1.2429190874099731,
+              'tempmeas_calT1_1': -0.16472387313842773,
+              'tempmeas_calT1_2': 0.008384902961552143,
+              'tempmeas_co1': [-243.91079711914062,
+                               0.18765400350093842,
+                               8.199999683711212e-06],
+              'tempmeas_co1_0': -243.91079711914062,
+              'tempmeas_co1_1': 0.18765400350093842,
+              'tempmeas_co1_2': 8.199999683711212e-06,
+              'tx_frequency_khz': 401500}}
+
+(lots more output here)
 
 ```
 Adding the `-c` option results in a CSV output, with the same field ordering as auto_rx's log files.
