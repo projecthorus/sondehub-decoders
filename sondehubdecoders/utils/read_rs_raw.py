@@ -32,6 +32,35 @@ def read_raw_rs41(filename):
     return output
 
 
+def read_raw_lms6_403(filename):
+    """
+    Attempt to read a file containing lines of hexadecimal data, suffixed with CRC information (e.g. [OK] or [NO])
+    
+    Returns a list of bytes.
+    """
+
+    # Read in entire file contents
+    _f = open(filename, 'r')
+    _data = _f.read()
+    _f.close()
+
+    output = []
+
+    # Work through each line
+    for _line in _data.split('\n'):
+
+        if '[OK]' in _line:
+            _hex = _line.split('  [OK]')[0]
+            _hex = _hex.replace(' ','')
+            try:
+                _bytes = codecs.decode(_hex, 'hex')
+            except:
+                continue
+
+            output.append(_bytes)
+
+    return output
+
 
 
 if __name__ == "__main__":
@@ -41,6 +70,7 @@ if __name__ == "__main__":
     from ..RS41.decoder import decode as rs41_decode
     from ..RS41.decoder import to_autorx_log as rs41_log
     from ..RS41 import RS41
+    from ..LMS6_403.decoder import decode as lms6_403_decode
 
     # Command line arguments.
     parser = argparse.ArgumentParser()
@@ -48,7 +78,7 @@ if __name__ == "__main__":
         "filename", help="Filename to Open",
     )
     parser.add_argument(
-        "-t", "--type", help="Radiosonde type (RS41, DFM, etc...)", default="RS41"
+        "-t", "--type", help="Radiosonde type (RS41, LMS6_403, DFM, etc...)", default="RS41"
     )
     parser.add_argument(
         "-v", "--verbose", help="Enable debug output.", action="store_true"
@@ -72,13 +102,18 @@ if __name__ == "__main__":
     if args.type == "RS41":
         decode_func = rs41_decode
         log_func = rs41_log
+        frames = read_raw_rs41(args.filename)
     # Other types here
+    elif args.type == "LMS6_403":
+        log_func = lambda x: print(x)
+        decode_func = lms6_403_decode
+        frames = read_raw_lms6_403(args.filename)
     else:
         logging.critical("Unknown Radiosonde Type!")
         sys.exit(1)
 
     # Read file
-    frames = read_raw_rs41(args.filename)
+
     
     #print(frames)
     #pprint.pprint(decode(_hex))
@@ -87,8 +122,12 @@ if __name__ == "__main__":
 
     for _raw_frame in frames:
         try:
-            _frame = _rs41.add_frame(_raw_frame)
-            #_frame = decode_func(_raw_frame)
+            if args.type == "RS41":
+                _frame = _rs41.add_frame(_raw_frame)
+                #_frame = decode_func(_raw_frame)
+            elif args.type == "LMS6_403":
+                #_frame = _raw_frame
+                _frame = decode_func(_raw_frame)
 
             if args.csv:
                 print(log_func(_frame))
