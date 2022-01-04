@@ -9,7 +9,7 @@ import logging
 import struct
 from ..utils.checksums import check_packet_crc
 from ..utils.data_types import *
-#from .postprocess import *
+from .postprocess import *
 
 # 24 54 00 00 00 7c 4a 9e 0b 19 1c 54 46 02 ff e6 e1 e2 1d bb b4 b3 c0 1f ec 8f 00 b2 51 b4 00 9e 26 00 25 30 00 14 18 00 38 0d 29 1f 84 2c a8 ac 1c f9 6f 99 0f 28 1f 7a ef 59 ea 1c f5 33 d1 12 2a 1f 7b ca 3c dc 1c f0 ae 04 1d 29 1f 8b 96 0f 81 1c fe 13 91 17 2b 1f 82 75 27 61 1c ee fa 7c 18 20 1f 91 fc 8f 68 1c e9 bf 50 05 25 1f 8c e3 f2 5f 1c fb 58 2b 0a 28 1f 92 9a 06 63 1c ec 93 7a 1b 24 1f 96 70 ff fa 1c eb a3 00 10 00 84 00 00 00 00 00 00 00 00 8a 2a 80 00 00 00 00 00 00 00 00 06 00 80 00 00 00 00 00 00 00 00 03 c1 72 00 00 00 03 3e 1b 09 dd 7f 00 00 00 00 00 00 1b e4 73 0f c1 a0 03 c1 95 03 c1 8a 03 c1 96 03 c1 94 00 00 00 00 1b 00 00 00 00 6f 9a 07 e4 3e  [OK]
 
@@ -29,7 +29,7 @@ LMS6_403_HEADER_POS = 0
 LMS6_403_DECODERS = {
     "block_name": "Overall",
     "expected_len": 40,
-    "struct": ">4sIHI4siii3s3s3sH132s3s3s3s3s3s3s3s3s3s3s3s3s",
+    "struct": ">4sIHI4siii3s3s3sH132s3s3s3s3s3s3s3s3s3s3s3s3s3sHHHH",
     "fields": [
         "header",
         "serial",
@@ -55,15 +55,20 @@ LMS6_403_DECODERS = {
         "sensor_chan9",
         "sensor_chan10",
         "sensor_chan11",
-        "sensor_chan12"
+        "sensor_chan12",
+        "sensor_chan13",
+        "cal1",
+        "cal2",
+        "cal3",
+        "cal4"
     ],
     "field_decoders": {
         "altitude": lambda alt: alt/1000,
         "up_down_vel_mms": lambda val: int24_be(val)/1000,
         "east_west_vel_mms": lambda val: int24_be(val)/1000,
         "north_south_vel_mms": lambda val: int24_be(val)/1000,
-        "latitude": lambda val: (val/(2**32-1))/360.0,
-        "longitude": lambda val: (val/(2**32-1))/360.0,
+        "latitude": lambda val: (val/(2**32-1))*360.0,
+        "longitude": lambda val: (val/(2**32-1))*360.0,
         "sensor_chan1": lms6_24bit,
         "sensor_chan2": lms6_24bit,
         "sensor_chan3": lms6_24bit,
@@ -76,6 +81,7 @@ LMS6_403_DECODERS = {
         "sensor_chan10": lms6_24bit,
         "sensor_chan11": lms6_24bit,
         "sensor_chan12": lms6_24bit,
+        "sensor_chan13": lms6_24bit,
     },
     "block_post_process": None
 }
@@ -83,8 +89,10 @@ LMS6_403_DECODERS = {
 LMS6_403_FRAME_LEN = struct.calcsize(LMS6_403_DECODERS['struct'])
 LMS6_403_DECODERS['expected_len'] = LMS6_403_FRAME_LEN
 
+print(f"Current Frame Length: {LMS6_403_FRAME_LEN}")
 
-def decode(frame, ignore_crc=False, subframe=None):
+
+def decode(frame, ignore_crc=False, cal_data=None):
     """
     Attempt to decode a LMS6_403 frame, provided as bytes, after de-scrambling has been performed.
 
@@ -148,6 +156,7 @@ def decode(frame, ignore_crc=False, subframe=None):
             # Apply any further post-processing to the block before storing it into the output dictionary
             # This may include converting coordinates to a more user-friendly format, or calculating
             # sensor values.
+            _block_dict = lms6_403_process_measurements(_block_dict, cal_data)
 
             # TODO
 
@@ -170,62 +179,11 @@ def decode(frame, ignore_crc=False, subframe=None):
     return output
 
 
-def descramble(frame):
-    """
-    De-Scramble a RS41 data frame by bitwise-XORing it with the known XOR scramble mask
-    """
-    # TODO
-    return frame
 
 
-def to_autorx_log(frame):
-    """
-    Convert a frame dictionary into a line matching the auto_rx log format.
-    """
-    # timestamp,serial,frame,lat,lon,alt,vel_v,vel_h,heading,temp,humidity,pressure,type,freq_mhz,snr,f_error_hz,sats,batt_v,burst_timer,aux_data
-    # 2021-11-12T22:53:38.000Z,S4610487,313,-34.95245,138.52045,10.5,-0.3,0.3,180.9,-273.0,-1.0,-1.0,RS41,401.500,13.5,937,6,2.9,-1,-1
-    _line = ""
-
-    # Timestamp
-    _line += f"{frame['blocks']['GPS Fix Information']['timestamp_str']},"
-
-    # Serial
-    _line += frame['blocks']['Status']['serial'] + ","
-
-    # Frame Number
-    _line += f"{frame['blocks']['Status']['frame_count']},"
-
-    # Latitude
-    _line += f"{frame['blocks']['GPS Position']['latitude']:0.5f},"
-
-    # Longitude
-    _line += f"{frame['blocks']['GPS Position']['longitude']:0.5f},"
-
-    # Altitude
-    _line += f"{frame['blocks']['GPS Position']['altitude']:0.1f},"
-
-    # Ascent Rate
-    _line += f"{frame['blocks']['GPS Position']['ascent_rate']:0.1f},"
-
-    # Ground Speed
-    _line += f"{frame['blocks']['GPS Position']['ground_speed']:0.1f},"
-
-    # Heading
-    _line += f"{frame['blocks']['GPS Position']['heading']:0.1f},"
-
-    # Temp, Humidity, Pressure
-    if 'temperature' in frame['blocks']['Measurements']:
-        _line += f"{frame['blocks']['Measurements']['temperature']:.1f},"
-    else:
-        _line += "-273.0,"
-    
-    _line += "humidity,pressure,"
-
-    # The rest TODO...
-
-
-    return _line
-
+def to_autorx_log(_frame):
+    # {'frame':[], 'time':[], 'altitude':[], 'chan1': [], 'chan2':[], 'chan3':[], 'chan4':[], 'chan13':[]}
+    return f"{_frame['frame_count']},{_frame['iTOW']},{_frame['altitude']},{_frame['sensor_chan1']},{_frame['sensor_chan2']},{_frame['sensor_chan3']},{_frame['sensor_chan4']},{_frame['sensor_chan13']},{_frame['cal1']},{_frame['cal2']},{_frame['cal3']},{_frame['cal4']}"
 
 
 if __name__ == "__main__":

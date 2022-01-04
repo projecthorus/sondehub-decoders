@@ -71,6 +71,8 @@ if __name__ == "__main__":
     from ..RS41.decoder import to_autorx_log as rs41_log
     from ..RS41 import RS41
     from ..LMS6_403.decoder import decode as lms6_403_decode
+    from ..LMS6_403.decoder import to_autorx_log as lms6_403_log
+    from ..LMS6_403 import LMS6_403
 
     # Command line arguments.
     parser = argparse.ArgumentParser()
@@ -105,7 +107,7 @@ if __name__ == "__main__":
         frames = read_raw_rs41(args.filename)
     # Other types here
     elif args.type == "LMS6_403":
-        log_func = lambda x: print(x)
+        log_func = lms6_403_log
         decode_func = lms6_403_decode
         frames = read_raw_lms6_403(args.filename)
     else:
@@ -120,6 +122,8 @@ if __name__ == "__main__":
 
     _rs41 = RS41()
 
+    _lms6_403 = LMS6_403()
+
     for _raw_frame in frames:
         try:
             if args.type == "RS41":
@@ -127,7 +131,8 @@ if __name__ == "__main__":
                 #_frame = decode_func(_raw_frame)
             elif args.type == "LMS6_403":
                 #_frame = _raw_frame
-                _frame = decode_func(_raw_frame)
+                _frame = _lms6_403.add_frame(_raw_frame)
+                #_frame = decode_func(_raw_frame)
 
             if args.csv:
                 print(log_func(_frame))

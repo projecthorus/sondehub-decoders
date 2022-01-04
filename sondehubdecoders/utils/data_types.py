@@ -35,9 +35,8 @@ def lms6_24bit(data):
         _temp = struct.unpack('>I', b'\x00'+ data)[0]
         _numerator = _temp & 0x1FFFF
         _denominator = _temp >> 17
-        #print(f"Raw: {str(data)} Numerator: {_numerator}, Denominator: {_denominator}")
         try:
             _val = _numerator / _denominator
             return _val
         except:
-            return None
+            return 0

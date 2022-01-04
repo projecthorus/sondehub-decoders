@@ -29,6 +29,8 @@ Progress:
 * Graw DFM
 * LMS6-1680
 * LMS6-403
+  * Basic fields extracted (lat/lon/alt,time)
+  * Calibration parameters extracted
 * M10
 * M20
 * iMS-100
