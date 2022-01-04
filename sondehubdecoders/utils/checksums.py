@@ -31,7 +31,7 @@ import struct
 #     return rem;
 # }
 
-def check_packet_crc(data:bytes, checksum:str='crc16'):
+def check_packet_crc(data:bytes, checksum:str='crc16', big_endian=False):
     """ 
     Attempt to validate a packets checksum, which is assumed to be present
     in the last few bytes of the packet.
@@ -48,10 +48,33 @@ def check_packet_crc(data:bytes, checksum:str='crc16'):
             raise ValueError(f"Checksum - Not enough data for CRC16!")
 
         # Decode the last 2 bytes as a uint16
-        _packet_checksum = struct.unpack('<H', data[-2:])[0]
+        if big_endian:
+            _packet_checksum = struct.unpack('>H', data[-2:])[0]
+        else:
+            _packet_checksum = struct.unpack('<H', data[-2:])[0]
 
         # Calculate a CRC over the rest of the data
         _crc16 = crcmod.predefined.mkCrcFun('crc-ccitt-false')
+        _calculated_crc = _crc16(data[:-2])
+
+        if _calculated_crc == _packet_checksum:
+            return True
+        else:
+            logging.debug(f"Calculated: {hex(_calculated_crc)}, Packet: {hex(_packet_checksum)}")
+            return False
+
+    elif checksum == "LMS6_403":
+        # LMS6_403 uses a CRC16-CCITT, but with an initial value of 0.
+        	
+        # Check we have enough data for a sane CRC16.
+        if len(data) < 3:
+            raise ValueError(f"Checksum - Not enough data for CRC16!")
+
+        # Decode the last 2 bytes as a uint16
+        _packet_checksum = struct.unpack('>H', data[-2:])[0]
+
+        # Calculate a CRC over the rest of the data
+        _crc16 = crcmod.mkCrcFun(0x11021, initCrc=0x0000, rev=False)
         _calculated_crc = _crc16(data[:-2])
 
         if _calculated_crc == _packet_checksum:

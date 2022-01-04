@@ -29,7 +29,7 @@ LMS6_403_HEADER_POS = 0
 LMS6_403_DECODERS = {
     "block_name": "Overall",
     "expected_len": 40,
-    "struct": ">4sIHI4siii3s3s3sH132s3s3s3s3s3s3s3s3s3s3s3s3s3sHHHH",
+    "struct": ">4sIHI4siii3s3s3sH132s3s3s3s3s3s3s3s3s3s3s3s3s3sHHHHBH",
     "fields": [
         "header",
         "serial",
@@ -60,7 +60,9 @@ LMS6_403_DECODERS = {
         "cal1",
         "cal2",
         "cal3",
-        "cal4"
+        "cal4",
+        "unknown3",
+        "checksum"
     ],
     "field_decoders": {
         "altitude": lambda alt: alt/1000,
@@ -114,14 +116,15 @@ def decode(frame, ignore_crc=False, cal_data=None):
     # Now we can start breaking apart the frame.
     output = {}
 
-    # TODO - CRC Check
-    _crc_ok = True
+    # CRC Check - CRC16-CCITT, but with an initial value of 0.
+    _crc_ok = check_packet_crc(frame, checksum="LMS6_403", big_endian=True)
 
     if _crc_ok:
 
         try:
             if len(frame) > LMS6_403_DECODERS["expected_len"]:
                 # Clip frame
+                logging.info(f"Discarded {len(frame)-LMS6_403_DECODERS['expected_len']} bytes: {frame[LMS6_403_DECODERS['expected_len']:]}")
                 frame = frame[:LMS6_403_DECODERS["expected_len"]]
 
             # Decode fields
@@ -183,7 +186,13 @@ def decode(frame, ignore_crc=False, cal_data=None):
 
 def to_autorx_log(_frame):
     # {'frame':[], 'time':[], 'altitude':[], 'chan1': [], 'chan2':[], 'chan3':[], 'chan4':[], 'chan13':[]}
-    return f"{_frame['frame_count']},{_frame['iTOW']},{_frame['altitude']},{_frame['sensor_chan1']},{_frame['sensor_chan2']},{_frame['sensor_chan3']},{_frame['sensor_chan4']},{_frame['sensor_chan13']},{_frame['cal1']},{_frame['cal2']},{_frame['cal3']},{_frame['cal4']}"
+    _line =  f"{_frame['frame_count']},{_frame['iTOW']},{_frame['altitude']},{_frame['sensor_chan1']},{_frame['sensor_chan2']},{_frame['sensor_chan3']},{_frame['sensor_chan4']},{_frame['sensor_chan13']},"
+    if 'temperature' in _frame:
+        _line += f"{_frame['temperature']:.1f},"
+    else:
+        _line += "-273.0"
+    
+    return _line
 
 
 if __name__ == "__main__":
