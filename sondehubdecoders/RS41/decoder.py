@@ -32,6 +32,9 @@ RS41_BLOCK_XDATA = 0x7E
 RS41_BLOCK_SGM_xTU = 0x7F
 RS41_BLOCK_EMPTY = 0x76
 RS41_BLOCK_ENCRYPTED = 0x80
+RS41_BLOCK_POSDATETIME = 0x82
+RS41_BLOCK_AUTH = 0x83
+RS41_BLOCK_UNKNOWN = 0x96
 
 # Expected block lengths
 RS41_FRAME_HEADER_LEN = 8
@@ -217,7 +220,49 @@ RS41_BLOCK_DECODERS = {
         },
         "block_post_process": None,
     },
-
+    RS41_BLOCK_POSDATETIME: {
+        "block_name": "Position Date and Time",
+        "expected_len": 38,
+        "struct": "<iiihhhHBBBBB13s",
+        "fields": [
+            'ecef_pos_x_cm',
+            'ecef_pos_y_cm',
+            'ecef_pos_z_cm',
+            'ecef_vel_x_cms',
+            'ecef_vel_y_cms',
+            'ecef_vel_z_cms',
+            'year',
+            'month',
+            'day',
+            'hour',
+            'minute',
+            'second',
+            'therest'
+            ],
+        "field_decoders": {
+        },
+        "block_post_process": rs41_process_gps_position,
+    },
+    RS41_BLOCK_AUTH: {
+        "block_name": "Authentication",
+        "expected_len": -1,
+        "struct": "",
+        "fields": [
+            ],
+        "field_decoders": {
+        },
+        "block_post_process": None,
+    },
+    RS41_BLOCK_UNKNOWN: {
+        "block_name": "Unknown",
+        "expected_len": -1,
+        "struct": "",
+        "fields": [
+            ],
+        "field_decoders": {
+        },
+        "block_post_process": None,
+    },
 }
 
 
